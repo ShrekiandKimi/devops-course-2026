@@ -28,5 +28,20 @@ check "Политика входящего трафика: deny"    "deny"   "$(
 echo "[3] Учётные записи"
 awk -F: '$3>=1000 && $3<65534 {printf "    %s (uid=%s)\n",$1,$3}' /etc/passwd
 
+echo "[4] Веб-сервер"
+check "Служба nginx активна"                    "active" "$(systemctl is-active nginx)"
+sudo nginx -t > /dev/null 2>&1; check "Конфигурация nginx корректна (nginx -t)" "0" "$?"
+openssl x509 -checkend $(( ${CERT_DAYS:-30} * 86400 )) -noout -in /etc/ssl/certs/devops.crt > /dev/null 2>&1
+check "Сертификат действителен ещё ${CERT_DAYS:-30} дн." "0" "$?"
+check "В каталоге ресурса нет файлов с записью для всех" "" "$(find /var/www/devops-site -perm -o+w)"
+check "Права закрытого ключа равны 600"         "600" "$(sudo stat -c '%a' /etc/ssl/private/devops.key)"
+
+echo "[5] Контейнеризация"
+check "Служба docker активна"                   "active"  "$(systemctl is-active docker)"
+check "Контейнер СУБД в состоянии healthy"      "healthy" "$(docker inspect -f '{{.State.Health.Status}}' app-db-1 2>/dev/null)"
+exposed="$(ss -tln | awk '$4 ~ /:(5000|5432)$/ && $4 !~ /^127\.0\.0\.1:/ {print $4}')"
+check "Порты 5000 и 5432 слушаются только на 127.0.0.1" "" "$exposed"
+check "Права файла ~/app/.env равны 600"        "600"     "$(stat -c '%a' ~/app/.env)"
+
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
