@@ -45,3 +45,12 @@
 | 01-clean-install | чистая установка Ubuntu Server 24.04.5, обновлена (`apt update && apt upgrade`) |
 | 02-keys-configured | пользователь `devops`, вход по ключу, `~/.ssh/config` |
 | 03-ssh-hardened | усиление защиты sshd, порт 2222 |
+
+## 8. Веб-сервер
+- Пакет: `nginx` (apt, Ubuntu 24.04 repo, nginx/1.24.0), служба включена в автозапуск.
+- Конфигурация ресурса: `/etc/nginx/sites-available/devops-site`, активирована ссылкой в `/etc/nginx/sites-enabled/`; стандартный сайт отключён (`rm /etc/nginx/sites-enabled/default`). Два блока `server`: порт 80 — `return 301 https://$host$request_uri;`, порт 443 `ssl` — `server_name devops.local`, `ssl_protocols TLSv1.2 TLSv1.3`, `root /var/www/devops-site`, `error_page 404 /404.html`. Журналы: `/var/log/nginx/devops-site.access.log` и `devops-site.error.log`.
+- Каталог ресурса: `/var/www/devops-site`, владелец `devops:devops`, каталоги 755, файлы 644 (доставка `rsync --chmod=D755,F644`).
+- Сертификат: `/etc/ssl/certs/devops.crt` (644, root), ключ `/etc/ssl/private/devops.key` (600, root).
+- Команда: `sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/devops.key -out /etc/ssl/certs/devops.crt -subj "/CN=devops.local" -addext "subjectAltName=DNS:devops.local"`; срок действия 365 дней.
+- Применение конфигурации: `sudo nginx -t && sudo systemctl reload nginx` (не `restart`). HSTS не включается.
+- Доставка содержимого: `scripts/deploy.sh [--dry-run]`.
