@@ -54,3 +54,11 @@
 - Команда: `sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/devops.key -out /etc/ssl/certs/devops.crt -subj "/CN=devops.local" -addext "subjectAltName=DNS:devops.local"`; срок действия 365 дней.
 - Применение конфигурации: `sudo nginx -t && sudo systemctl reload nginx` (не `restart`). HSTS не включается.
 - Доставка содержимого: `scripts/deploy.sh [--dry-run]`.
+
+## 9. Контейнеризация
+- Docker Engine 29.9.2 из официального репозитория `download.docker.com` (пакеты `docker-ce`, `docker-ce-cli`, `containerd.io`, `docker-buildx-plugin`, `docker-compose-plugin`), `docker.io` не используется. Группа `docker`: `devops` (имеет sudo).
+- Проект: `~/app` (на сервере), доставка `rsync -avz --delete --exclude=.env app/ devops:app/`. Образ `devops-app:1.0` (python:3.12-slim, пользователь `app`, CMD в exec-форме).
+- Файл `~/app/.env`: права 600, владелец `devops`, пароль PostgreSQL сгенерирован на сервере (`openssl rand -hex 16`); в репозиторий не добавляется (`.gitignore`, `.dockerignore`), шаблон — `app/.env.example`.
+- Порты: приложение `127.0.0.1:5000->5000` (только loopback), PostgreSQL не публикуется (доступен приложению по имени `db` в сети проекта `app_backend`). Docker публикует порты в обход ufw, поэтому публикация на `0.0.0.0` запрещена.
+- Именованный том: `app_db_data` (`/var/lib/postgresql/data`), сохраняется при `docker compose down`, удаляется только `down -v`.
+- Обратный прокси: в HTTPS-блоке `devops-site` `location /app/ { proxy_pass http://127.0.0.1:5000/; }` с заголовками `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`; статический ресурс `/` сохранён.
