@@ -1,0 +1,6 @@
+---
+app_image: "ghcr.io/shrekiandkimi/devops-ci-app"
+app_tag: "1a4cc2c9be7f99000717e723f3ada6ce591e62b5"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000

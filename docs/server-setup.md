@@ -45,3 +45,20 @@
 | 01-clean-install | чистая установка Ubuntu Server 24.04.5, обновлена (`apt update && apt upgrade`) |
 | 02-keys-configured | пользователь `devops`, вход по ключу, `~/.ssh/config` |
 | 03-ssh-hardened | усиление защиты sshd, порт 2222 |
+
+## 10. Ansible
+
+- Управляющий узел — Ubuntu 24.04 в WSL, каталог проекта `~/pr11/ansible`. Управляемый узел — учебная VM `devops-lab11` с адресом `192.0.2.10` в сети Host-only.
+- `inventory/bootstrap.ini` подключается к Ubuntu по SSH под `student`. `inventory/prod.ini` использует `devops` и ключ `~/.ssh/devops_vm`. Перед первым подключением сверяется публичный ключ хоста.
+- `base` устанавливает Docker и зависимости. `ssh` создаёт пользователя для автоматизации, добавляет открытый ключ и настраивает SSH и UFW. `nginx` настраивает прокси на порту 80. `app` загружает закреплённый образ, запускает контейнер и проверяет его доступность.
+- Образ — `ghcr.io/shrekiandkimi/devops-ci-app:1a4cc2c9be7f99000717e723f3ada6ce591e62b5`. Контейнер доступен локально на `127.0.0.1:5000`. Проверка через Nginx — `curl --fail http://192.0.2.10/health`.
+
+Из каталога `ansible/`:
+
+```bash
+ansible-playbook -i inventory/bootstrap.ini site.yml --ask-pass --ask-become-pass
+ansible-playbook site.yml
+ansible-playbook verify.yml
+```
+
+Последняя команда проверяет параметры SSH, запущенный контейнер и ответ приложения.
